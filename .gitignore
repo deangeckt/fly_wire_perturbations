@@ -1,0 +1,25 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Virtual env
+.venv/
+
+# Logs and temp files
+*.log
+*.tmp
+*~
+
+# IDE/editor
+.vscode/
+
+# Data artifacts
+/data/
+
+# Outputs
+*.feather
+*.h5
