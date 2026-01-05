@@ -48,8 +48,11 @@ class FlyvisCellTypePert:
 
     def _perturb_motif(self, conn: pd.DataFrame, motif_id: str) -> pd.DataFrame:
         """Apply motif-based perturbation using the specified motif identifier."""
-        # TODO: Implement motif perturbation
-        pass
+        edges_path = f'data/flyvis_data/cell_type/motifs/motif_{motif_id}_edges.csv'
+        edges_df = pd.read_csv(edges_path, index_col=0)
+        edges_list = list(edges_df[['source', 'target']].itertuples(index=False, name=None))
+        return self._perturb_pair_wise(conn, edges_list)
+
 
     def override_network(self, network: Network, pert_conn: pd.DataFrame):
         """Override network synaptic strengths by multiplying with perturbation weights.
@@ -71,14 +74,9 @@ class FlyvisCellTypePert:
 
 
 if __name__ == '__main__':
-    conn_data = {
-        'source_type': ['C1', 'L1', 'Am', 'T1', 'C1', 'L1'],
-        'target_type': ['L1', 'Am', 'T1', 'T2', 'T2', 'T1']
-    }
-    conn_df = pd.DataFrame(conn_data)
+    conn_df = pd.read_csv('data/flyvis_data/flyvis_cell_type_connectivity.csv')
 
-    print("Original connectivity dataframe:")
-    print(conn_df)
+    print(conn_df.shape)
     print()
 
     # Create perturbation instance
@@ -86,7 +84,16 @@ if __name__ == '__main__':
 
     # Perturb two pairs: (C1, L1) and (Am, T1)
     pairs_to_perturb = [('C1', 'L1'), ('Am', 'T1')]
-    result_df = pert.perturb(conn_df, PerturbationType.PAIR_WISE, pairs=pairs_to_perturb)
+    pert_conn1 = pert.perturb(conn_df, PerturbationType.PAIR_WISE, pairs=pairs_to_perturb)
 
     print(f"Perturbed dataframe (pairs {pairs_to_perturb} set to weight 0):")
-    print(result_df)
+    print(pert_conn1[pert_conn1.pert_weight == 0])
+    print()
+
+
+    # Perturb motif with ID '38'
+    motif_id = 38
+    pert_conn2 = pert.perturb(conn_df, PerturbationType.MOTIF, motif_id=str(motif_id))
+
+    print(f"Perturbed dataframe (motif {motif_id} edges set to weight 0):")
+    print(pert_conn2[pert_conn2.pert_weight == 0])
