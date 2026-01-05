@@ -48,7 +48,7 @@ class FlyvisCellTypePert:
 
     def _perturb_motif(self, conn: pd.DataFrame, motif_id: str) -> pd.DataFrame:
         """Apply motif-based perturbation using the specified motif identifier."""
-        edges_path = f'data/flyvis_data/cell_type/motifs/motif_{motif_id}_edges.csv'
+        edges_path = f'data/flyvis_data/cell_type/{motif_id}_edges.csv'
         edges_df = pd.read_csv(edges_path, index_col=0)
         edges_list = list(edges_df[['source', 'target']].itertuples(index=False, name=None))
         return self._perturb_pair_wise(conn, edges_list)
@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
 
     # Perturb motif with ID '38'
-    motif_id = 38
+    motif_id = "78 ['-', '-', '+', '+']"
     pert_conn2 = pert.perturb(conn_df, PerturbationType.MOTIF, motif_id=str(motif_id))
 
     print(f"Perturbed dataframe (motif {motif_id} edges set to weight 0):")
