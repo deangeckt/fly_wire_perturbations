@@ -95,12 +95,13 @@ def plot_eye(ax, nodes_coords, edges_annot, ctype1, ctype2, norm, cmap, *,
             return 0
         if len(vals) == 1:
             return int(vals[0])
-        raise ValueError(f"Column {cid} has {len(vals)} edges; choose aggregation.")
+        if len(vals) > 1:
+            print(f"Column {cid} has {len(vals)} edges; using mean.")
+            return int(np.mean(vals))
 
     colpos = nodes_coords[["column_id", "p", "q"]].drop_duplicates("column_id").copy()
     x, y = pq_to_xy(colpos["p"].to_numpy(), colpos["q"].to_numpy(), hexsize=hexsize)
 
-    # optional mirrors / offsets to place eyes into same canvas
     if mirror_x:
         x = -x
     if mirror_y:
