@@ -180,11 +180,12 @@ if __name__ == "__main__":
 
     conn_df = pd.read_csv('data/flyvis_data/flyvis_cell_type_connectivity.csv')
     pert = FlyvisCellTypePert()
-    pairs_to_perturb = [('C1', 'L1'), ('Mi1', 'T4c')]
+    pairs_to_perturb = [('L4', 'L4')]
     motif_id = "78 ['-', '-', '+', '+']"
-    pert.perturb(conn_df, PerturbationType.MOTIF, motif_id=str(motif_id))
+    # pert.perturb(conn_df, PerturbationType.MOTIF, motif_id=str(motif_id))
+    pert.perturb(conn_df, PerturbationType.PAIR_WISE, pairs=pairs_to_perturb)
     print(pert.pert_conn[pert.pert_conn.pert_weight == 0])
-    # pert.perturb(conn_df, PerturbationType.PAIR_WISE, pairs=pairs_to_perturb)
-    wrapper = MovingEdgeWrapper(dataset, pert=pert, pert_folder_name='test2',
-                                output_file_name="data/flyvis_data/perf/motif-78-pert.csv")
+
+    wrapper = MovingEdgeWrapper(dataset, pert=pert, pert_folder_name='test3',
+                                output_file_name="data/flyvis_data/perf/pairwise-L4-L4-pert.csv")
     wrapper.run()
