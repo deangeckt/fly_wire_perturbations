@@ -7,14 +7,17 @@ from flyvis.network import Network
 class PerturbationType(Enum):
     PAIR_WISE = 'pair-wise'
     MOTIF = 'motif'
+    OUTGOING = 'outgoing'
 
 
 class FlyvisCellTypePert:
     def __init__(self):
         self.pert_conn = None
 
-    def perturb(self, conn: pd.DataFrame, perturbation_type: PerturbationType,
+    def perturb(self, conn: pd.DataFrame,
+                perturbation_type: PerturbationType,
                 pairs: Optional[List[Tuple[str, str]]] = None,
+                source_outgoing: Optional[str] = None,
                 motif_id: Optional[str] = None):
         """Perturb a connectivity dataframe based on the specified perturbation type.
 
@@ -35,6 +38,10 @@ class FlyvisCellTypePert:
             if motif_id is None:
                 raise ValueError("motif_id parameter is required for MOTIF perturbation")
             result = self._perturb_motif(result, motif_id)
+        elif perturbation_type == PerturbationType.OUTGOING:
+            if source_outgoing is None:
+                raise ValueError("source_outgoing parameter is required for OUTGOING perturbation")
+            result = self._perturb_outgoing(result, source_outgoing)
         self.pert_conn = result
 
     def _perturb_pair_wise(self, conn: pd.DataFrame, pairs: List[Tuple[str, str]]) -> pd.DataFrame:
@@ -45,6 +52,13 @@ class FlyvisCellTypePert:
         for source_type, target_type in pairs:
             mask = (conn['source_type'] == source_type) & (conn['target_type'] == target_type)
             conn.loc[mask, 'pert_weight'] = 0
+        return conn
+
+    def _perturb_outgoing(self, conn: pd.DataFrame, source_type: str) -> pd.DataFrame:
+        """Apply outgoing perturbation by setting weights to 0 for all outgoing connections
+        from a specified source cell type."""
+        conn['pert_weight'] = 1
+        conn.loc[conn['source_type'] == source_type, 'pert_weight'] = 0
         return conn
 
     def _perturb_motif(self, conn: pd.DataFrame, motif_id: str) -> pd.DataFrame:
@@ -98,4 +112,9 @@ if __name__ == '__main__':
     pert.perturb(conn_df, PerturbationType.MOTIF, motif_id=str(motif_id))
 
     print(f"Perturbed dataframe (motif {motif_id} edges set to weight 0):")
+    print(pert.pert_conn[pert.pert_conn.pert_weight == 0])
+
+    pert = FlyvisCellTypePert()
+    source_outgoing = 'L4'
+    pert.perturb(conn_df, PerturbationType.OUTGOING, source_outgoing=source_outgoing)
     print(pert.pert_conn[pert.pert_conn.pert_weight == 0])
