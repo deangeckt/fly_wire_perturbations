@@ -82,12 +82,12 @@ def pq_to_xy(p, q, hexsize=1.0, rotate=-np.pi/6):
     return x, y
 
 def plot_eye(ax, nodes_coords, edges_annot, ctype1, ctype2, norm, cmap, *,
-             mirror_x=False, mirror_y=True, x_offset=0.0, y_offset=0.0, hexsize=1.0, plot_col_ids=False):
+             metric= "syn_count", mirror_x=False, mirror_y=True, x_offset=0.0, y_offset=0.0, hexsize=1.0, plot_col_ids=False):
     type_pair = edges_annot[(edges_annot["pre_cell_type"]==ctype1) &
                             (edges_annot["post_cell_type"]==ctype2)].copy()
 
     # per-column syn count (enforce 0/1 edge per column; change later if needed)
-    syn_by_col = type_pair.groupby("column_id")["syn_count"].agg(list).to_dict()
+    syn_by_col = type_pair.groupby("column_id")[metric].agg(list).to_dict()
 
     def nsyns_for_col(cid):
         vals = syn_by_col.get(cid, [])
@@ -110,6 +110,7 @@ def plot_eye(ax, nodes_coords, edges_annot, ctype1, ctype2, norm, cmap, *,
     y = y + y_offset
 
     for xi, yi, cid in zip(x, y, colpos["column_id"].to_numpy()):
+    # for xi, yi, cid in zip(x, y, type_pair['column_id'].unique()):
         nsyns = nsyns_for_col(cid)
         color = cmap(norm(nsyns))
         ax.add_patch(
@@ -119,7 +120,7 @@ def plot_eye(ax, nodes_coords, edges_annot, ctype1, ctype2, norm, cmap, *,
             )
         )
         if plot_col_ids:
-            ax.text(xi, yi, str(cid), fontsize=6, ha="center", va="center", color="white")
+            ax.text(xi, yi, str(cid), fontsize=6, ha="center", va="center", color="black")
 
     return x, y
 
