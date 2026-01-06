@@ -10,9 +10,12 @@ class PerturbationType(Enum):
 
 
 class FlyvisCellTypePert:
+    def __init__(self):
+        self.pert_conn = None
+
     def perturb(self, conn: pd.DataFrame, perturbation_type: PerturbationType,
                 pairs: Optional[List[Tuple[str, str]]] = None,
-                motif_id: Optional[str] = None) -> pd.DataFrame:
+                motif_id: Optional[str] = None):
         """Perturb a connectivity dataframe based on the specified perturbation type.
 
         Args:
@@ -24,17 +27,15 @@ class FlyvisCellTypePert:
             DataFrame with added 'pert_weight' column
         """
         result = conn.copy()
-
         if perturbation_type == PerturbationType.PAIR_WISE:
             if pairs is None:
                 raise ValueError("pairs parameter is required for PAIR_WISE perturbation")
-            return self._perturb_pair_wise(result, pairs)
+            result = self._perturb_pair_wise(result, pairs)
         elif perturbation_type == PerturbationType.MOTIF:
             if motif_id is None:
                 raise ValueError("motif_id parameter is required for MOTIF perturbation")
-            return self._perturb_motif(result, motif_id)
-
-        return result
+            result = self._perturb_motif(result, motif_id)
+        self.pert_conn = result
 
     def _perturb_pair_wise(self, conn: pd.DataFrame, pairs: List[Tuple[str, str]]) -> pd.DataFrame:
         """Apply pair-wise perturbation by setting weights to 0 for specified pairs,
@@ -53,8 +54,7 @@ class FlyvisCellTypePert:
         edges_list = list(edges_df[['source', 'target']].itertuples(index=False, name=None))
         return self._perturb_pair_wise(conn, edges_list)
 
-
-    def override_network(self, network: Network, pert_conn: pd.DataFrame):
+    def override_network(self, network: Network):
         """Override network synaptic strengths by multiplying with perturbation weights.
         Args:
             network: Network object with edge_params.syn_strength containing keys and raw_values
@@ -64,8 +64,8 @@ class FlyvisCellTypePert:
 
         for idx, (src, tar) in enumerate(syn_str):
             # Find matching row in pert_conn for this (source_type, target_type) pair
-            mask = (pert_conn['source_type'] == src) & (pert_conn['target_type'] == tar)
-            matching_rows = pert_conn[mask]
+            mask = (self.pert_conn['source_type'] == src) & (self.pert_conn['target_type'] == tar)
+            matching_rows = self.pert_conn[mask]
 
             if not matching_rows.empty:
                 pert_weight = matching_rows['pert_weight'].iloc[0]
@@ -84,16 +84,18 @@ if __name__ == '__main__':
 
     # Perturb two pairs: (C1, L1) and (Am, T1)
     pairs_to_perturb = [('C1', 'L1'), ('Am', 'T1')]
-    pert_conn1 = pert.perturb(conn_df, PerturbationType.PAIR_WISE, pairs=pairs_to_perturb)
+    pert.perturb(conn_df, PerturbationType.PAIR_WISE, pairs=pairs_to_perturb)
 
     print(f"Perturbed dataframe (pairs {pairs_to_perturb} set to weight 0):")
-    print(pert_conn1[pert_conn1.pert_weight == 0])
+    print(pert.pert_conn[pert.pert_conn.pert_weight == 0])
     print()
 
 
     # Perturb motif with ID '38'
+    pert = FlyvisCellTypePert()
+
     motif_id = "78 ['-', '-', '+', '+']"
-    pert_conn2 = pert.perturb(conn_df, PerturbationType.MOTIF, motif_id=str(motif_id))
+    pert.perturb(conn_df, PerturbationType.MOTIF, motif_id=str(motif_id))
 
     print(f"Perturbed dataframe (motif {motif_id} edges set to weight 0):")
-    print(pert_conn2[pert_conn2.pert_weight == 0])
+    print(pert.pert_conn[pert.pert_conn.pert_weight == 0])
