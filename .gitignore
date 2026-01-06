@@ -19,6 +19,7 @@ __pycache__/
 
 # Data artifacts
 /data/
+/connectome_data/
 
 # Outputs
 *.feather
