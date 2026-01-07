@@ -21,6 +21,8 @@ from flyvis.analysis.moving_bar_responses import preferred_direction
 from flyvis.analysis.moving_bar_responses import dsi_correlation_to_known
 from flyvis.analysis.moving_bar_responses import direction_selectivity_index
 from flyvis.analysis.moving_bar_responses import correlation_to_known_tuning_curves
+from flyvis.analysis.moving_bar_responses import plot_angular_tuning
+
 
 data_path = Path("data/flyvis_data")
 data_path.mkdir(parents=True, exist_ok=True)
@@ -56,7 +58,8 @@ class MovingEdgeWrapper():
                 dataset: MovingEdge,
                  pert_folder_name=None,
                  pert: FlyvisCellTypePert = None,
-                 output_file_name = ''):
+                 output_file_name = '',
+                 plot_output_dir = ''):
         self.dataset = dataset
         self.src_folder = data_path / "results/flow/0000/000"
 
@@ -70,10 +73,52 @@ class MovingEdgeWrapper():
             self.tar_folder = self.src_folder
 
         self.output_file_name = output_file_name
+        self.plot_output_dir = plot_output_dir
+
         self.network_view = NetworkView(self.tar_folder)
         self.network = self.network_view.init_network()
         # self.cell_type_df = pd.read_csv(f'{data_path}/flyvis_cell_type_connectivity.csv')
         self.pert = pert
+
+    def plot_cell_type_responses(self, stims_and_resps, cell_type, intensity, output_dir):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        stims_and_resps["responses"].custom.where(
+            cell_type=cell_type, 
+            intensity=intensity, 
+            time=">-0.5,<1.0"
+        ).custom.plot_traces(x="time", legend_labels=["angle"])
+        
+        ax = plt.gca()
+        ax.set_title(f"{cell_type} responses to moving edge (intensity={intensity})")
+        
+        # Save the plot
+        plot_filename = f"{cell_type}_intensity{intensity}.png"
+        plot_path = os.path.join(output_dir, plot_filename)
+        plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+        plt.close(fig)
+        print(f"Saved plot: {plot_path}")
+
+    def plot_tuning_curve(self, stims_and_resps, cell_type, intensity, output_dir):
+        """Plot angular tuning curve for a single cell type and intensity."""
+        fig, ax = plot_angular_tuning(stims_and_resps, cell_type=cell_type, intensity=intensity)
+    
+        plot_filename = f"{cell_type}_tuning_intensity{intensity}.png"
+        plot_path = os.path.join(output_dir, plot_filename)
+        plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+        plt.close(fig)
+        print(f"Saved tuning curve: {plot_path}")
+
+    def plot_all_responses(self, stims_and_resps, output_dir):
+        cell_types_to_plot = ["T4a", "T4b", "T4c", "T4d", "T5a", "T5b", "T5c", "T5d"]
+        intensities = [0, 1]
+        
+        os.makedirs(output_dir, exist_ok=True)
+        
+        for cell_type in cell_types_to_plot:
+            for intensity in intensities:
+                self.plot_cell_type_responses(stims_and_resps, cell_type, intensity, output_dir)
+                self.plot_tuning_curve(stims_and_resps, cell_type, intensity, output_dir)
 
 
     def run(self):
@@ -155,6 +200,9 @@ class MovingEdgeWrapper():
         results_df = pd.DataFrame(data)
         os.makedirs(os.path.dirname(self.output_file_name), exist_ok=True)
         results_df.to_csv(self.output_file_name, index=False)
+
+        print('Generating response plots...')
+        self.plot_all_responses(stims_and_resps, self.plot_output_dir)
 
 
 
