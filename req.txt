@@ -4,7 +4,6 @@ networkx
 matplotlib
 gcsfs
 pyarrow
-netsci
 h5py
 tqdm
 seaborn

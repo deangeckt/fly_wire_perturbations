@@ -141,7 +141,6 @@ class MovingEdgeWrapper():
             tc_corr1 = corrs.custom.where(cell_type=cell_type, intensity=1)
             tc_corr0 = corrs.custom.where(cell_type=cell_type, intensity=0)
 
-            # Append row to the list as a dictionary
             data.append({
                 'cell_type': cell_type,
                 'pd_intensity1': pd1,
@@ -181,7 +180,8 @@ if __name__ == "__main__":
     conn_df = pd.read_csv('data/flyvis_data/flyvis_cell_type_connectivity.csv')
     pert = FlyvisCellTypePert()
     pairs_to_perturb = [('L4', 'L4')]
-    motif_id = "78 ['-', '-', '+', '+']"
+
+    # motif_id = "78 ['+', '+', '-', '-']"
     # pert.perturb(conn_df, PerturbationType.MOTIF, motif_id=str(motif_id))
     pert.perturb(conn_df, PerturbationType.PAIR_WISE, pairs=pairs_to_perturb)
     print(pert.pert_conn[pert.pert_conn.pert_weight == 0])
