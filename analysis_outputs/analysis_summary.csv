@@ -1,0 +1,10 @@
+,0
+n_perturbations,805.0
+n_unique_sources,63.0
+n_unique_targets,116.0
+T4_baseline,0.7625694580407765
+T5_baseline,0.8987583408215776
+T4_mean_sensitivity,0.012122961164556557
+T5_mean_sensitivity,0.010020845349865208
+T4_roughness_ratio,1.0134794461416234
+T5_roughness_ratio,0.9321143247886025
