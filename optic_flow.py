@@ -28,11 +28,10 @@ def fixed_write_h5(path, val):
 datamate.io._write_h5 = fixed_write_h5
 if hasattr(datamate.directory, "_write_h5"):
     datamate.directory._write_h5 = fixed_write_h5
-    print(" -> Patched datamate.directory._write_h5")
+    #print(" -> Patched datamate.directory._write_h5")
 else:
-    print(" -> Warning: Could not find _write_h5 in directory module")
-
-print("Importing flyvis...")
+    #print(" -> Warning: Could not find _write_h5 in directory module")
+    pass
 from flyvis import NetworkView
 
 
@@ -60,15 +59,12 @@ class SintelWrapper():
         self.pert = pert
 
     def run(self):
-        print('Running Sintel optic flow simulation...')
 
         if self.pert is not None:
-            print('Applying perturbation to network in memory...')
             # 1. Perturb the in-memory network
             self.pert.override_network(self.network)
 
             # 2. SAVE PERTURBED WEIGHTS TO DISK
-            print("Overwriting disk checkpoints with perturbed weights...")
 
             checkpoint_template = torch.load(self.src_folder / "best_chkpt", map_location='cpu')
             perturbed_checkpoint = checkpoint_template.copy()
@@ -76,31 +72,25 @@ class SintelWrapper():
 
             target_best_chkpt = self.tar_folder / "best_chkpt"
             torch.save(perturbed_checkpoint, target_best_chkpt)
-            print(f" -> Updated: {target_best_chkpt}")
 
             chkpts_dir = self.tar_folder / "chkpts"
             if chkpts_dir.exists():
                 for chkpt_file in chkpts_dir.glob("*"):
                     torch.save(perturbed_checkpoint, chkpt_file)
-                    print(f" -> Updated: {chkpt_file}")
 
             # 3. CLEAR CACHE
-            print("Clearing caches...")
             for cache_name in ["__cache__", "__storage__"]:
                 cache_dir = self.tar_folder / cache_name
                 if cache_dir.exists():
                     shutil.rmtree(cache_dir)
-                    print(f" -> Removed {cache_name}")
 
             self.network_view = NetworkView(self.tar_folder)
             self.network = self.network_view.init_network()
 
-        print('Initializing decoder...')
         # Initialize the decoder
         decoder = self.network_view.init_decoder()["flow"]
         decoder.eval()  # Set to evaluation mode
 
-        print('Generating Sintel optic flow responses...')
         
         # Collect predictions and ground truth for all sequences
         all_pred_flow = []
@@ -126,7 +116,6 @@ class SintelWrapper():
             all_true_flow.append(flow.cpu() if hasattr(flow, 'cpu') else flow)
             all_epe.append(epe.detach().cpu())
         
-        print('Evaluating performance...')
         
         # Aggregate metrics
         all_epe_tensor = torch.cat(all_epe, dim=0)  # Concatenate all EPE values
@@ -156,19 +145,20 @@ class SintelWrapper():
             })
 
         results_df = pd.DataFrame(data)
-        os.makedirs(os.path.dirname(self.output_file_name), exist_ok=True)
-        results_df.to_csv(self.output_file_name, index=False)
+
         
-        print(f"\nResults saved to {self.output_file_name}")
         overall = results_df[results_df['sequence'] == 'overall'].iloc[0]
-        print(f"Mean EPE: {overall['mean_epe']:.4f} pixels")
-        print(f"Median EPE: {overall['median_epe']:.4f} pixels")
-        print(f"% pixels with EPE < 3px: {overall['epe_pixel_3']*100:.2f}%")
+        epe_df = pd.DataFrame({
+            'mean_epe': [overall['mean_epe']],
+            'median_epe': [overall['median_epe']],
+            'pct_pixels_epe_lt_3px': [overall['epe_pixel_3'] * 100]})
+
+        
+        return epe_df
 
 
 if __name__ == "__main__":
     # Initialize Sintel dataset using the exact parameters from the documentation
-    print("Initializing Sintel dataset...")
     
     dataset = MultiTaskSintel(
         tasks=["flow"],
@@ -183,33 +173,17 @@ if __name__ == "__main__":
         random_temporal_crop=False,
     )
     
-    print(f"Dataset initialized with {len(dataset)} sequences")
-    if hasattr(dataset, 'arg_df'):
-        print(f"Sequences: {dataset.arg_df['name'].tolist()[:5]}... (showing first 5)")
+    #if hasattr(dataset, 'arg_df'):
+    #    print(f"Sequences: {dataset.arg_df['name'].tolist()[:5]}... (showing first 5)")
 
-    # Run original network
-    print("\n" + "="*60)
-    print("RUNNING ORIGINAL NETWORK")
-    print("="*60)
-    wrapper = SintelWrapper(
-        dataset, 
-        pert=None, 
-        pert_folder_name=None,
-        output_file_name="data/flyvis_data/perf/sintel_original_network.csv"
-    )
-    wrapper.run()
 
-    # Run perturbed network
-    print("\n" + "="*60)
-    print("RUNNING PERTURBED NETWORK (L4-L4)")
-    print("="*60)
     conn_df = pd.read_csv('data/flyvis_data/flyvis_cell_type_connectivity.csv')
     pert = FlyvisCellTypePert()
     pairs_to_perturb = [('L4', 'L4')]
 
     pert.perturb(conn_df, PerturbationType.PAIR_WISE, pairs=pairs_to_perturb)
-    print("\nPerturbed connections:")
-    print(pert.pert_conn[pert.pert_conn.pert_weight == 0])
+    #print("\nPerturbed connections:")
+    #print(pert.pert_conn[pert.pert_conn.pert_weight == 0])
 
     wrapper = SintelWrapper(
         dataset, 
@@ -219,6 +193,3 @@ if __name__ == "__main__":
     )
     wrapper.run()
     
-    print("\n" + "="*60)
-    print("DONE - Compare results in data/flyvis_data/perf/")
-    print("="*60)
