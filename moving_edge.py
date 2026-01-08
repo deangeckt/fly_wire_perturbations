@@ -111,7 +111,7 @@ class MovingEdgeWrapper():
 
     def plot_all_responses(self, stims_and_resps, output_dir):
         cell_types_to_plot = ["T4a", "T4b", "T4c", "T4d", "T5a", "T5b", "T5c", "T5d"]
-        intensities = [0, 1]
+        intensities = self.dataset.intensities
         
         os.makedirs(output_dir, exist_ok=True)
         
@@ -175,27 +175,30 @@ class MovingEdgeWrapper():
         data = []
 
         for cell_type in cell_types_to_collect:
-            pd1 = pds.custom.where(cell_type=cell_type, intensity=1).item()
-            pd0 = pds.custom.where(cell_type=cell_type, intensity=0).item()
-
-            dsi1 = dsis.custom.where(cell_type=cell_type, intensity=1).item()
-            dsi0 = dsis.custom.where(cell_type=cell_type, intensity=0).item()
-
-            dsi_corr = dsi_correlation_to_known(direction_selectivity_index(stims_and_resps)).median() # TODO; ask Zina
+            # 1. Calculate common metrics for this cell type
             corrs = correlation_to_known_tuning_curves(stims_and_resps)
-            tc_corr1 = corrs.custom.where(cell_type=cell_type, intensity=1)
-            tc_corr0 = corrs.custom.where(cell_type=cell_type, intensity=0)
+            dsi_corr = dsi_correlation_to_known(direction_selectivity_index(stims_and_resps)).median()
 
-            data.append({
+            # 2. Initialize the dictionary with the static data
+            entry = {
                 'cell_type': cell_type,
-                'pd_intensity1': pd1,
-                'pd_intensity0': pd0,
-                'dsi_intensity1': dsi1,
-                'dsi_intensity0': dsi0,
-                'dsi_correlation': dsi_corr.item(),
-                'tc_correlation_intensity1': tc_corr1.item(),
-                'tc_correlation_intensity0': tc_corr0.item()
-            })
+                'dsi_correlation': dsi_corr.item()
+            }
+
+            # 3. Iterate over intensities and add them dynamically to the SAME dictionary
+            for intensity in self.dataset.intensities:
+                # Extract the specific values
+                pd_ = pds.custom.where(cell_type=cell_type, intensity=intensity).item()
+                dsi = dsis.custom.where(cell_type=cell_type, intensity=intensity).item()
+                tc_corr = corrs.custom.where(cell_type=cell_type, intensity=intensity).item()
+
+                # Update the dictionary with dynamic keys
+                entry[f'pd_intensity{intensity}'] = pd_
+                entry[f'dsi_intensity{intensity}'] = dsi
+                entry[f'tc_correlation_intensity{intensity}'] = tc_corr
+
+            # 4. Append the fully populated dictionary
+            data.append(entry)
 
         results_df = pd.DataFrame(data)
         os.makedirs(os.path.dirname(self.output_file_name), exist_ok=True)
@@ -209,7 +212,7 @@ class MovingEdgeWrapper():
 if __name__ == "__main__":
     dataset = MovingEdge(
             offsets=[-10, 11],  # offset of bar from center in 1 * radians(2.25) led size
-            intensities=[0, 1],  # intensity of bar
+            intensities=[0, 0.75],  # intensity of bar
             speeds=[19],  # speed of bar in 1 * radians(5.8) / s
             height=80,  # height of moving bar in 1 * radians(2.25) led size
             post_pad_mode="continue",  # for post-stimulus period, continue with the last frame of the stimulus
@@ -219,21 +222,9 @@ if __name__ == "__main__":
             angles=list(np.arange(0, 360, 30)),  # motion direction (orthogonal to edge)
     )
 
-
-    wrapper = MovingEdgeWrapper(dataset, pert=None, pert_folder_name=None,
-                                output_file_name="data/flyvis_data/perf/original_network.csv")
+    plot_output_dir = f'data/flyvis_data/motif_feedback_test/moving_edge/original'
+    csv_output_path = f'{plot_output_dir}/original.csv'
+    wrapper = MovingEdgeWrapper(dataset, pert=None, pert_folder_name=None, plot_output_dir=plot_output_dir,
+                                output_file_name=csv_output_path)
     wrapper.run()
 
-
-    conn_df = pd.read_csv('data/flyvis_data/flyvis_cell_type_connectivity.csv')
-    pert = FlyvisCellTypePert()
-    pairs_to_perturb = [('L4', 'L4')]
-
-    # motif_id = "78 ['+', '+', '-', '-']"
-    # pert.perturb(conn_df, PerturbationType.MOTIF, motif_id=str(motif_id))
-    pert.perturb(conn_df, PerturbationType.PAIR_WISE, pairs=pairs_to_perturb)
-    print(pert.pert_conn[pert.pert_conn.pert_weight == 0])
-
-    wrapper = MovingEdgeWrapper(dataset, pert=pert, pert_folder_name='test3',
-                                output_file_name="data/flyvis_data/perf/pairwise-L4-L4-pert.csv")
-    wrapper.run()

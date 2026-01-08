@@ -8,4 +8,4 @@ h5py
 tqdm
 seaborn
 scipy
-flyvis
+flyvis==1.1.2
